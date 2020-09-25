@@ -15,8 +15,8 @@ func (a *TestAdapter) GetByte() *byte {
 	return &b
 }
 
-func (a *TestAdapter) SetByte(b byte) {
-	log.Printf("Tick %d: Received byte %v", GetTick(), b)
+func (a *TestAdapter) SetByte(b *byte) {
+	log.Printf("Tick %d: Received byte %v", GetTick(), *b)
 }
 
 func (a *TestAdapter) PutInBuffer(b []byte) {

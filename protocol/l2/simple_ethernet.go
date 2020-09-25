@@ -72,33 +72,40 @@ func (s *SimpleEthernet) SendUp([]byte) {
 /*
 Internal methods
 */
-func (s *SimpleEthernet) setByte(b byte) {
-	s.buffer = append(s.buffer, b)
-	s.processNewByte()
+func (s *SimpleEthernet) setByte(b *byte) {
+	if b == nil {
+		s.checkForFrame()
+	} else {
+		s.buffer = append(s.buffer, *b)
+	}
+	//s.processNewByte()
 }
 
-func (s *SimpleEthernet) processNewByte() {
-	if len(s.buffer) < len(s.preamble) {
+func (s *SimpleEthernet) checkForFrame() {
+	if len(s.buffer) == 0 {
+		return
+	}
+
+	if len(s.buffer) < 22+checksumLength {
+		s.buffer = nil
 		return
 	}
 
 	isMatch := true
 	for i, b := range s.preamble {
-		if s.buffer[len(s.buffer)-len(s.preamble)+i] != b {
+		if s.buffer[i] != b {
 			isMatch = false
 			break
 		}
 	}
 
 	if !isMatch {
+		s.buffer = nil
 		return
 	}
 
 	//Preamble detected
-	previousFrame := s.buffer[0 : len(s.buffer)-len(s.preamble)]
-	if len(previousFrame) == 0 {
-		return
-	}
+	previousFrame := s.buffer
 	isValidFrame := s.validateChecksum(previousFrame)
 	if isValidFrame {
 		if !s.adapter.IsPromiscuous() {
@@ -130,7 +137,7 @@ func (s *SimpleEthernet) processNewByte() {
 	}
 
 	//Remove previous frame from buffer
-	s.buffer = s.buffer[len(s.buffer)-len(s.preamble) : len(s.buffer)]
+	s.buffer = nil
 }
 
 func (s *SimpleEthernet) calculateChecksum(data []byte) []byte {

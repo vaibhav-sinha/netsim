@@ -12,8 +12,8 @@ const (
 )
 
 type EthernetAdapter struct {
-	readBuffer      chan byte
-	writeBuffer     []byte
+	readBuffer      chan *byte
+	writeBuffer     []*byte
 	macAddress      []byte
 	promiscuousMode bool
 	isOn            bool
@@ -25,7 +25,7 @@ Constructor
 */
 func NewEthernetAdapter(macAddress []byte, promiscuousMode bool) *EthernetAdapter {
 	return &EthernetAdapter{
-		readBuffer:      make(chan byte, readBufferSize),
+		readBuffer:      make(chan *byte, readBufferSize),
 		macAddress:      macAddress,
 		promiscuousMode: promiscuousMode,
 		isOn:            false,
@@ -46,13 +46,13 @@ func (e *EthernetAdapter) GetByte() *byte {
 	if len(e.writeBuffer) > 0 {
 		b := e.writeBuffer[0]
 		e.writeBuffer = e.writeBuffer[1:len(e.writeBuffer)]
-		return &b
+		return b
 	}
 
 	return nil
 }
 
-func (e *EthernetAdapter) SetByte(b byte) {
+func (e *EthernetAdapter) SetByte(b *byte) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -63,7 +63,7 @@ func (e *EthernetAdapter) SetByte(b byte) {
 	e.readBuffer <- b
 }
 
-func (e *EthernetAdapter) PutInBuffer(b []byte) {
+func (e *EthernetAdapter) PutInBuffer(bytes []byte) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -71,7 +71,14 @@ func (e *EthernetAdapter) PutInBuffer(b []byte) {
 		return
 	}
 
-	e.writeBuffer = append(e.writeBuffer, b...)
+	//e.writeBuffer = append(e.writeBuffer, bytes...)
+	for _, b := range bytes {
+		d := b
+		e.writeBuffer = append(e.writeBuffer, &d)
+	}
+
+	//Put a nil byte for IPG
+	e.writeBuffer = append(e.writeBuffer, nil)
 }
 
 func (e *EthernetAdapter) TurnOn() {
@@ -86,7 +93,7 @@ func (e *EthernetAdapter) TurnOff() {
 	defer e.lock.Unlock()
 
 	e.isOn = false
-	e.readBuffer = make(chan byte, readBufferSize)
+	e.readBuffer = make(chan *byte, readBufferSize)
 	e.writeBuffer = nil
 }
 
@@ -101,6 +108,6 @@ func (e *EthernetAdapter) IsPromiscuous() bool {
 	return e.promiscuousMode
 }
 
-func (e *EthernetAdapter) GetReadBuffer() chan byte {
+func (e *EthernetAdapter) GetReadBuffer() chan *byte {
 	return e.readBuffer
 }

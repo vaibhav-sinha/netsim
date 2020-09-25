@@ -64,8 +64,8 @@ func (l *SimpleLink) ClockTrigger() {
 					corruptedData := *l.pulses[i] ^ 0x80
 					l.pulses[i] = &corruptedData
 				}
-				l.destination.SetByte(*l.pulses[i])
 			}
+			l.destination.SetByte(l.pulses[i])
 		}
 		l.pulses[i] = l.pulses[i-1]
 	}

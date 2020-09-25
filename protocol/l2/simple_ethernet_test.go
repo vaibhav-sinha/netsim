@@ -58,7 +58,7 @@ func TestSimpleDataTransfer(t *testing.T) {
 	// Send the packet and wait
 	log.Printf("Testcase: Sending packet")
 	l3Protocols1[0].SendDown([]byte("this_is_a_test"), []byte("10.0.1.1"), nil)
-	l3Protocols1[0].SendDown([]byte("\\0"), []byte("10.0.1.1"), nil)
+	l3Protocols1[0].SendDown([]byte("hope_this_works"), []byte("10.0.1.1"), nil)
 	time.Sleep(5 * time.Second)
 
 }
