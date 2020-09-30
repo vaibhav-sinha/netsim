@@ -3,6 +3,7 @@ package hardware
 import (
 	"log"
 	"math/rand"
+	"sync"
 )
 
 /*
@@ -25,6 +26,7 @@ type SimpleLink struct {
 	source        Adapter
 	destination   Adapter
 	pulses        []*byte
+	lock          sync.Mutex
 }
 
 func NewSimpleLink(length int64, dataRate int64, byteErrorRate float32, source Adapter, destination Adapter) *SimpleLink {
@@ -54,6 +56,9 @@ func (l *SimpleLink) ClockTrigger() {
 	if GetTick()%(ClockRate/l.dataRate) != 0 {
 		return
 	}
+
+	l.lock.Lock()
+	defer l.lock.Unlock()
 
 	for i := len(l.pulses) - 1; i > 0; i-- {
 		if i == len(l.pulses)-1 {

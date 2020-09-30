@@ -30,17 +30,19 @@ type SimpleEthernet struct {
 	preamble    []byte
 	adapter     *hardware.EthernetAdapter
 	l3Protocols []protocol.Protocol
+	rawConsumer protocol.FrameConsumer
 }
 
 /*
 Constructor
 */
-func NewSimpleEthernet(adapter *hardware.EthernetAdapter, l3Protocols []protocol.Protocol) *SimpleEthernet {
+func NewSimpleEthernet(adapter *hardware.EthernetAdapter, l3Protocols []protocol.Protocol, rawConsumer protocol.FrameConsumer) *SimpleEthernet {
 	s := &SimpleEthernet{
 		identifier:  []byte("00"),
 		preamble:    []byte("01020304"),
 		adapter:     adapter,
 		l3Protocols: l3Protocols,
+		rawConsumer: rawConsumer,
 	}
 
 	go s.run()
@@ -70,6 +72,13 @@ func (s *SimpleEthernet) SendUp([]byte) {
 }
 
 /*
+Expose config
+*/
+func (s *SimpleEthernet) GetAdapter() *hardware.EthernetAdapter {
+	return s.adapter
+}
+
+/*
 Internal methods
 */
 func (s *SimpleEthernet) setByte(b *byte) {
@@ -78,7 +87,6 @@ func (s *SimpleEthernet) setByte(b *byte) {
 	} else {
 		s.buffer = append(s.buffer, *b)
 	}
-	//s.processNewByte()
 }
 
 func (s *SimpleEthernet) checkForFrame() {
@@ -111,26 +119,34 @@ func (s *SimpleEthernet) checkForFrame() {
 		if !s.adapter.IsPromiscuous() {
 			isFrameForMe := s.isFrameForMe(previousFrame[8:14])
 			if !isFrameForMe {
-				log.Printf("SimpleEthernet: Got frame destined to someone else")
+				log.Printf("SimpleEthernet: mac %s: Got frame destined to someone else. Dropping.", string(s.adapter.GetMacAddress()))
+				//Remove previous frame from buffer
+				s.buffer = nil
 				return
 			}
 		}
 
-		frameType := previousFrame[20:22]
-		var upperLayerProtocol protocol.Protocol
-		for _, p := range s.l3Protocols {
-			identifier := p.GetIdentifier()
-			if frameType[0] == identifier[0] && frameType[1] == identifier[1] {
-				upperLayerProtocol = p
-				break
-			}
+		if s.rawConsumer != nil {
+			s.rawConsumer.SendUp(previousFrame[:])
 		}
-		if upperLayerProtocol != nil {
-			previousFrame = previousFrame[22:]
-			previousFrame = previousFrame[:len(previousFrame)-checksumLength]
-			upperLayerProtocol.SendUp(previousFrame)
-		} else {
-			log.Printf("SimpleEthernet: Got unrecognized frame type: %v", frameType)
+
+		if len(s.l3Protocols) > 0 {
+			frameType := previousFrame[20:22]
+			var upperLayerProtocol protocol.Protocol
+			for _, p := range s.l3Protocols {
+				identifier := p.GetIdentifier()
+				if frameType[0] == identifier[0] && frameType[1] == identifier[1] {
+					upperLayerProtocol = p
+					break
+				}
+			}
+			if upperLayerProtocol != nil {
+				previousFrame = previousFrame[22:]
+				previousFrame = previousFrame[:len(previousFrame)-checksumLength]
+				upperLayerProtocol.SendUp(previousFrame)
+			} else {
+				log.Printf("SimpleEthernet: mac %s: Got unrecognized frame type: %v", string(s.adapter.GetMacAddress()), frameType)
+			}
 		}
 	} else {
 		log.Printf("SimpleEthernet: Got corrupted frame")

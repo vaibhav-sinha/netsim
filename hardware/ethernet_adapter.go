@@ -71,7 +71,6 @@ func (e *EthernetAdapter) PutInBuffer(bytes []byte) {
 		return
 	}
 
-	//e.writeBuffer = append(e.writeBuffer, bytes...)
 	for _, b := range bytes {
 		d := b
 		e.writeBuffer = append(e.writeBuffer, &d)
