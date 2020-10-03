@@ -34,7 +34,7 @@ func (a *TestAdapter) TurnOff() {
 func TestBasicDataTransfer(t *testing.T) {
 	adapter1 := &TestAdapter{}
 	adapter2 := &TestAdapter{}
-	NewSimpleLink(100, 1e6, 0.01, adapter1, adapter2)
+	NewLink(100, 1e6, 0.01, adapter1, adapter2)
 	go Clk.Start()
 	time.Sleep(100 * time.Second)
 }

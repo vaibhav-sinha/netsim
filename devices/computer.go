@@ -8,6 +8,6 @@ import (
 
 type Computer struct {
 	adapter     *hardware.EthernetAdapter
-	l2Protocol  *l2.SimpleEthernet
+	l2Protocol  *l2.Ethernet
 	l3Protocols []protocol.Protocol
 }

@@ -14,7 +14,7 @@ not implementing it.
 Also, not adding any buffers
 */
 type Bridge struct {
-	ports           []*l2.SimpleEthernet
+	ports           []*l2.Ethernet
 	forwardingTable map[string]int
 	vlanTable       map[int][]uint16
 	lock            sync.Mutex
@@ -26,7 +26,7 @@ func NewBridge(macs [][]byte) *Bridge {
 		vlanTable:       make(map[int][]uint16),
 	}
 	for i, m := range macs {
-		adapter := l2.NewSimpleEthernet(hardware.NewEthernetAdapter(m, true), nil, newBridgeFrameConsumer(bridge, i))
+		adapter := l2.NewEthernet(hardware.NewEthernetAdapter(m, true), nil, newBridgeFrameConsumer(bridge, i))
 		bridge.ports = append(bridge.ports, adapter)
 		bridge.vlanTable[i] = []uint16{0}
 	}
@@ -44,7 +44,7 @@ func (b *Bridge) TurnOn() {
 	}
 }
 
-func (b *Bridge) GetPort(portNum int) *l2.SimpleEthernet {
+func (b *Bridge) GetPort(portNum int) *l2.Ethernet {
 	return b.ports[portNum]
 }
 

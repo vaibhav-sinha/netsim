@@ -29,7 +29,7 @@ var (
 	defaultVlanId  = utils.HexStringToBytes("0000")
 )
 
-type SimpleEthernet struct {
+type Ethernet struct {
 	buffer      []byte
 	identifier  []byte
 	preamble    []byte
@@ -41,8 +41,8 @@ type SimpleEthernet struct {
 /*
 Constructor
 */
-func NewSimpleEthernet(adapter *hardware.EthernetAdapter, l3Protocols []protocol.L3Protocol, rawConsumer protocol.FrameConsumer) *SimpleEthernet {
-	s := &SimpleEthernet{
+func NewEthernet(adapter *hardware.EthernetAdapter, l3Protocols []protocol.L3Protocol, rawConsumer protocol.FrameConsumer) *Ethernet {
+	s := &Ethernet{
 		identifier:  []byte("00"),
 		preamble:    []byte("01020304"),
 		adapter:     adapter,
@@ -61,11 +61,11 @@ func NewSimpleEthernet(adapter *hardware.EthernetAdapter, l3Protocols []protocol
 /*
 Next 3 methods make this an implementation of Protocol
 */
-func (s *SimpleEthernet) GetIdentifier() []byte {
+func (s *Ethernet) GetIdentifier() []byte {
 	return s.identifier
 }
 
-func (s *SimpleEthernet) SendDown(data []byte, destAddr []byte, metadata []byte, l3Protocol protocol.Protocol) {
+func (s *Ethernet) SendDown(data []byte, destAddr []byte, metadata []byte, l3Protocol protocol.Protocol) {
 	b := []byte{}
 	b = append(b, s.preamble...)
 	b = append(b, destAddr...)
@@ -77,21 +77,21 @@ func (s *SimpleEthernet) SendDown(data []byte, destAddr []byte, metadata []byte,
 	s.adapter.PutInBuffer(b)
 }
 
-func (s *SimpleEthernet) SendUp([]byte) {
+func (s *Ethernet) SendUp([]byte) {
 	//Not used since at L2 level the adapter sends the data up byte-by-byte
 }
 
 /*
 Expose config
 */
-func (s *SimpleEthernet) GetAdapter() hardware.Adapter {
+func (s *Ethernet) GetAdapter() hardware.Adapter {
 	return s.adapter
 }
 
 /*
 Internal methods
 */
-func (s *SimpleEthernet) setByte(b *byte) {
+func (s *Ethernet) setByte(b *byte) {
 	if b == nil {
 		s.checkForFrame()
 	} else {
@@ -99,7 +99,7 @@ func (s *SimpleEthernet) setByte(b *byte) {
 	}
 }
 
-func (s *SimpleEthernet) checkForFrame() {
+func (s *Ethernet) checkForFrame() {
 	if len(s.buffer) == 0 {
 		return
 	}
@@ -129,7 +129,7 @@ func (s *SimpleEthernet) checkForFrame() {
 		if !s.adapter.IsPromiscuous() {
 			isFrameForMe := s.isFrameForMe(previousFrame[8:14])
 			if !isFrameForMe {
-				log.Printf("SimpleEthernet: mac %s: Got frame destined to someone else. Dropping.", string(s.adapter.GetMacAddress()))
+				log.Printf("Ethernet: mac %s: Got frame destined to someone else. Dropping.", string(s.adapter.GetMacAddress()))
 				//Remove previous frame from buffer
 				s.buffer = nil
 				return
@@ -155,18 +155,18 @@ func (s *SimpleEthernet) checkForFrame() {
 				previousFrame = previousFrame[:len(previousFrame)-checksumLength]
 				upperLayerProtocol.SendUp(previousFrame)
 			} else {
-				log.Printf("SimpleEthernet: mac %s: Got unrecognized frame type: %v", string(s.adapter.GetMacAddress()), frameType)
+				log.Printf("Ethernet: mac %s: Got unrecognized frame type: %v", string(s.adapter.GetMacAddress()), frameType)
 			}
 		}
 	} else {
-		log.Printf("SimpleEthernet: Got corrupted frame")
+		log.Printf("Ethernet: Got corrupted frame")
 	}
 
 	//Remove previous frame from buffer
 	s.buffer = nil
 }
 
-func (s *SimpleEthernet) calculateChecksum(data []byte) []byte {
+func (s *Ethernet) calculateChecksum(data []byte) []byte {
 	checksum := []byte("0")
 	for _, d := range data {
 		checksum[0] += d
@@ -175,7 +175,7 @@ func (s *SimpleEthernet) calculateChecksum(data []byte) []byte {
 	return checksum
 }
 
-func (s *SimpleEthernet) validateChecksum(data []byte) bool {
+func (s *Ethernet) validateChecksum(data []byte) bool {
 	calculated := s.calculateChecksum(data[:len(data)-checksumLength])
 	actual := data[len(data)-checksumLength:]
 
@@ -189,7 +189,7 @@ func (s *SimpleEthernet) validateChecksum(data []byte) bool {
 	return isMatch
 }
 
-func (s *SimpleEthernet) isFrameForMe(destAddr []byte) bool {
+func (s *Ethernet) isFrameForMe(destAddr []byte) bool {
 	// Is broadcast address
 	isBroadcast := true
 	for i := 0; i < len(broadcastAddr); i++ {
@@ -228,7 +228,7 @@ func (s *SimpleEthernet) isFrameForMe(destAddr []byte) bool {
 	return isMatch
 }
 
-func (s *SimpleEthernet) run() {
+func (s *Ethernet) run() {
 	for {
 		select {
 		case b := <-s.adapter.GetReadBuffer():

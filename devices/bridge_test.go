@@ -45,12 +45,10 @@ func TestBridge(t *testing.T) {
 	// Create the nodes
 	nodes := []*node{}
 	for i := 0; i < 4; i++ {
-		var l3Protocols []protocol.L3Protocol
 		n := &node{nodeNum: i}
-		l3Protocols = append(l3Protocols, n)
 		mac := fmt.Sprintf("portn%d", i)
 		adapter := hardware.NewEthernetAdapter([]byte(mac), false)
-		l2.NewSimpleEthernet(adapter, l3Protocols, nil)
+		l2.NewEthernet(adapter, []protocol.L3Protocol{n}, nil)
 		nodes = append(nodes, n)
 		adapter.TurnOn()
 	}
@@ -66,7 +64,7 @@ func TestBridge(t *testing.T) {
 
 	// Link nodes to bridge ports
 	for i := 0; i < 4; i++ {
-		hardware.NewSimpleDuplexLink(100, 1e8, 0.000, nodes[i].l2Protocol.GetAdapter(), bridge.GetPort(i).GetAdapter())
+		hardware.NewDuplexLink(100, 1e8, 0.000, nodes[i].l2Protocol.GetAdapter(), bridge.GetPort(i).GetAdapter())
 	}
 
 	// Start the clock
