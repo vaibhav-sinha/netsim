@@ -4,6 +4,7 @@ import (
 	"log"
 	"netsim/hardware"
 	"netsim/protocol"
+	"netsim/utils"
 )
 
 /*
@@ -15,13 +16,17 @@ Frame format:
 Preamble  - 8 bytes
 Dest addr - 6 bytes
 Src addr  - 6 bytes
+VLAN Id   - 2 bytes
 Type      - 2 bytes
 Body      - No fixed length
 Checksum  - checksumLength bytes
 */
 
-const (
+var (
 	checksumLength = 1
+	broadcastAddr  = utils.HexStringToBytes("FFFFFFFFFFFF")
+	multicastAddr  = utils.HexStringToBytes("01005E")
+	defaultVlanId  = utils.HexStringToBytes("0000")
 )
 
 type SimpleEthernet struct {
@@ -56,11 +61,12 @@ func (s *SimpleEthernet) GetIdentifier() []byte {
 	return s.identifier
 }
 
-func (s *SimpleEthernet) SendDown(data []byte, destAddr []byte, l3Protocol protocol.Protocol) {
+func (s *SimpleEthernet) SendDown(data []byte, destAddr []byte, metadata []byte, l3Protocol protocol.Protocol) {
 	b := []byte{}
 	b = append(b, s.preamble...)
 	b = append(b, destAddr...)
 	b = append(b, s.adapter.GetMacAddress()...)
+	b = append(b, defaultVlanId...)
 	b = append(b, l3Protocol.GetIdentifier()...)
 	b = append(b, data...)
 	b = append(b, s.calculateChecksum(b)...)
@@ -94,7 +100,7 @@ func (s *SimpleEthernet) checkForFrame() {
 		return
 	}
 
-	if len(s.buffer) < 22+checksumLength {
+	if len(s.buffer) < 24+checksumLength {
 		s.buffer = nil
 		return
 	}
@@ -131,7 +137,7 @@ func (s *SimpleEthernet) checkForFrame() {
 		}
 
 		if len(s.l3Protocols) > 0 {
-			frameType := previousFrame[20:22]
+			frameType := previousFrame[22:24]
 			var upperLayerProtocol protocol.Protocol
 			for _, p := range s.l3Protocols {
 				identifier := p.GetIdentifier()
@@ -141,7 +147,7 @@ func (s *SimpleEthernet) checkForFrame() {
 				}
 			}
 			if upperLayerProtocol != nil {
-				previousFrame = previousFrame[22:]
+				previousFrame = previousFrame[24:]
 				previousFrame = previousFrame[:len(previousFrame)-checksumLength]
 				upperLayerProtocol.SendUp(previousFrame)
 			} else {
@@ -180,6 +186,31 @@ func (s *SimpleEthernet) validateChecksum(data []byte) bool {
 }
 
 func (s *SimpleEthernet) isFrameForMe(destAddr []byte) bool {
+	// Is broadcast address
+	isBroadcast := true
+	for i := 0; i < len(broadcastAddr); i++ {
+		if broadcastAddr[i] != destAddr[i] {
+			isBroadcast = false
+		}
+	}
+
+	if isBroadcast {
+		return isBroadcast
+	}
+
+	// Is multicast address
+	isMulticast := true
+	for i := 0; i < len(multicastAddr); i++ {
+		if multicastAddr[i] != destAddr[i] {
+			isMulticast = false
+		}
+	}
+
+	if isMulticast {
+		return isMulticast
+	}
+
+	// Is this adapter's address
 	isMatch := true
 	addr := s.adapter.GetMacAddress()
 

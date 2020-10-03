@@ -19,8 +19,8 @@ func (d *dummyL3Protocol) GetIdentifier() []byte {
 	return []byte("du")
 }
 
-func (d *dummyL3Protocol) SendDown(data []byte, destAddr []byte, sender protocol.Protocol) {
-	d.l2Protocol.SendDown(data, d.getMacForAddr(destAddr), d)
+func (d *dummyL3Protocol) SendDown(data []byte, destAddr []byte, metadata []byte, sender protocol.Protocol) {
+	d.l2Protocol.SendDown(data, d.getMacForAddr(destAddr), metadata, d)
 }
 
 func (d *dummyL3Protocol) SendUp(b []byte) {
@@ -57,8 +57,8 @@ func TestSimpleDataTransfer(t *testing.T) {
 
 	// Send the packet and wait
 	log.Printf("Testcase: Sending packet")
-	l3Protocols1[0].SendDown([]byte("this_is_a_test"), []byte("10.0.1.1"), nil)
-	l3Protocols1[0].SendDown([]byte("hope_this_works"), []byte("10.0.1.1"), nil)
+	l3Protocols1[0].SendDown([]byte("this_is_a_test"), []byte("10.0.1.1"), nil, nil)
+	l3Protocols1[0].SendDown([]byte("hope_this_works"), []byte("10.0.1.1"), nil, nil)
 	time.Sleep(5 * time.Second)
 
 }

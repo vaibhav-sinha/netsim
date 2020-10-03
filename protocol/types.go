@@ -5,7 +5,7 @@ type FrameConsumer interface {
 }
 
 type FrameProducer interface {
-	SendDown(data []byte, destAddr []byte, sender Protocol)
+	SendDown(data []byte, destAddr []byte, metadata []byte, sender Protocol)
 }
 
 type Protocol interface {

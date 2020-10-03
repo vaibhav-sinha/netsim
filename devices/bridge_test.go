@@ -23,8 +23,8 @@ func (d *node) GetIdentifier() []byte {
 	return []byte("no")
 }
 
-func (d *node) SendDown(data []byte, destAddr []byte, sender protocol.Protocol) {
-	d.l2Protocol.SendDown(data, destAddr, d)
+func (d *node) SendDown(data []byte, destAddr []byte, metadata []byte, sender protocol.Protocol) {
+	d.l2Protocol.SendDown(data, destAddr, metadata, d)
 }
 
 func (d *node) SendUp(b []byte) {
@@ -70,10 +70,21 @@ func TestBridge(t *testing.T) {
 
 	// Send traffic
 	log.Printf("Testcase: Sending packet")
-	nodes[0][0].(*node).SendDown([]byte("This is first packet for p2"), []byte("portn2"), nil)
-	nodes[0][0].(*node).SendDown([]byte("This is second packet for p2"), []byte("portn2"), nil)
+	nodes[0][0].(*node).SendDown([]byte("This is first packet for p2"), []byte("portn2"), nil, nil)
+	nodes[0][0].(*node).SendDown([]byte("This is second packet for p2"), []byte("portn2"), nil, nil)
 
 	// This should lead to a bridge forwarding table hit
-	nodes[1][0].(*node).SendDown([]byte("This is first packet for p0"), []byte("portn0"), nil)
-	time.Sleep(5 * time.Second)
+	nodes[2][0].(*node).SendDown([]byte("This is first packet for p0"), []byte("portn0"), nil, nil)
+
+	// Setup VLAN
+	bridge.AddPortToVlan(1, 1)
+	nodes[1][0].(*node).SendDown([]byte("This packet should not reach p3"), []byte("portn3"), nil, nil)
+
+	time.Sleep(2 * time.Second)
+
+	// Add port 3 to VLAN 1
+	bridge.AddPortToVlan(3, 1)
+	nodes[1][0].(*node).SendDown([]byte("This packet should reach p3"), []byte("portn3"), nil, nil)
+
+	time.Sleep(2 * time.Second)
 }
