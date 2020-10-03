@@ -12,7 +12,11 @@ import (
 Dummy L3 Protocol implementation for testing
 */
 type dummyL3Protocol struct {
-	l2Protocol protocol.Protocol
+	l2Protocol protocol.L2Protocol
+}
+
+func (d *dummyL3Protocol) SetL2Protocol(l2Protocol protocol.L2Protocol) {
+	d.l2Protocol = l2Protocol
 }
 
 func (d *dummyL3Protocol) GetIdentifier() []byte {
@@ -35,19 +39,17 @@ func (d *dummyL3Protocol) getMacForAddr(destAddr []byte) []byte {
 Testcase
 */
 func TestSimpleDataTransfer(t *testing.T) {
-	var l3Protocols1 []protocol.Protocol
+	var l3Protocols1 []protocol.L3Protocol
 	l3Protocols1 = append(l3Protocols1, &dummyL3Protocol{})
 
-	var l3Protocols2 []protocol.Protocol
+	var l3Protocols2 []protocol.L3Protocol
 	l3Protocols2 = append(l3Protocols2, &dummyL3Protocol{})
 
 	adapter1 := hardware.NewEthernetAdapter([]byte("immac1"), false)
-	l2Protocol1 := NewSimpleEthernet(adapter1, l3Protocols1, nil)
-	l3Protocols1[0].(*dummyL3Protocol).l2Protocol = l2Protocol1
+	NewSimpleEthernet(adapter1, l3Protocols1, nil)
 
 	adapter2 := hardware.NewEthernetAdapter([]byte("immac2"), false)
-	l2Protocol2 := NewSimpleEthernet(adapter2, l3Protocols2, nil)
-	l3Protocols2[0].(*dummyL3Protocol).l2Protocol = l2Protocol2
+	NewSimpleEthernet(adapter2, l3Protocols2, nil)
 
 	_ = hardware.NewSimpleLink(100, 1e8, 0.01, adapter1, adapter2)
 

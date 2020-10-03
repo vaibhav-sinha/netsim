@@ -16,11 +16,15 @@ Dummy L3 Protocol implementation for testing
 */
 type node struct {
 	nodeNum    int
-	l2Protocol protocol.Protocol
+	l2Protocol protocol.L2Protocol
 }
 
 func (d *node) GetIdentifier() []byte {
 	return []byte("no")
+}
+
+func (d *node) SetL2Protocol(l2Protocol protocol.L2Protocol) {
+	d.l2Protocol = l2Protocol
 }
 
 func (d *node) SendDown(data []byte, destAddr []byte, metadata []byte, sender protocol.Protocol) {
@@ -39,15 +43,15 @@ func TestBridge(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	// Create the nodes
-	var nodes [][]protocol.Protocol
+	nodes := []*node{}
 	for i := 0; i < 4; i++ {
-		var l3Protocols []protocol.Protocol
-		l3Protocols = append(l3Protocols, &node{nodeNum: i})
+		var l3Protocols []protocol.L3Protocol
+		n := &node{nodeNum: i}
+		l3Protocols = append(l3Protocols, n)
 		mac := fmt.Sprintf("portn%d", i)
 		adapter := hardware.NewEthernetAdapter([]byte(mac), false)
-		l2Protocol := l2.NewSimpleEthernet(adapter, l3Protocols, nil)
-		l3Protocols[0].(*node).l2Protocol = l2Protocol
-		nodes = append(nodes, l3Protocols)
+		l2.NewSimpleEthernet(adapter, l3Protocols, nil)
+		nodes = append(nodes, n)
 		adapter.TurnOn()
 	}
 
@@ -62,7 +66,7 @@ func TestBridge(t *testing.T) {
 
 	// Link nodes to bridge ports
 	for i := 0; i < 4; i++ {
-		hardware.NewSimpleDuplexLink(100, 1e8, 0.000, nodes[i][0].(*node).l2Protocol.(*l2.SimpleEthernet).GetAdapter(), bridge.GetPort(i).GetAdapter())
+		hardware.NewSimpleDuplexLink(100, 1e8, 0.000, nodes[i].l2Protocol.GetAdapter(), bridge.GetPort(i).GetAdapter())
 	}
 
 	// Start the clock
@@ -70,21 +74,21 @@ func TestBridge(t *testing.T) {
 
 	// Send traffic
 	log.Printf("Testcase: Sending packet")
-	nodes[0][0].(*node).SendDown([]byte("This is first packet for p2"), []byte("portn2"), nil, nil)
-	nodes[0][0].(*node).SendDown([]byte("This is second packet for p2"), []byte("portn2"), nil, nil)
+	nodes[0].SendDown([]byte("This is first packet for p2"), []byte("portn2"), nil, nil)
+	nodes[0].SendDown([]byte("This is second packet for p2"), []byte("portn2"), nil, nil)
 
 	// This should lead to a bridge forwarding table hit
-	nodes[2][0].(*node).SendDown([]byte("This is first packet for p0"), []byte("portn0"), nil, nil)
+	nodes[2].SendDown([]byte("This is first packet for p0"), []byte("portn0"), nil, nil)
 
 	// Setup VLAN
 	bridge.AddPortToVlan(1, 1)
-	nodes[1][0].(*node).SendDown([]byte("This packet should not reach p3"), []byte("portn3"), nil, nil)
+	nodes[1].SendDown([]byte("This packet should not reach p3"), []byte("portn3"), nil, nil)
 
 	time.Sleep(2 * time.Second)
 
 	// Add port 3 to VLAN 1
 	bridge.AddPortToVlan(3, 1)
-	nodes[1][0].(*node).SendDown([]byte("This packet should reach p3"), []byte("portn3"), nil, nil)
+	nodes[1].SendDown([]byte("This packet should reach p3"), []byte("portn3"), nil, nil)
 
 	time.Sleep(2 * time.Second)
 }

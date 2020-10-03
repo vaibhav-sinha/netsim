@@ -34,20 +34,24 @@ type SimpleEthernet struct {
 	identifier  []byte
 	preamble    []byte
 	adapter     *hardware.EthernetAdapter
-	l3Protocols []protocol.Protocol
+	l3Protocols []protocol.L3Protocol
 	rawConsumer protocol.FrameConsumer
 }
 
 /*
 Constructor
 */
-func NewSimpleEthernet(adapter *hardware.EthernetAdapter, l3Protocols []protocol.Protocol, rawConsumer protocol.FrameConsumer) *SimpleEthernet {
+func NewSimpleEthernet(adapter *hardware.EthernetAdapter, l3Protocols []protocol.L3Protocol, rawConsumer protocol.FrameConsumer) *SimpleEthernet {
 	s := &SimpleEthernet{
 		identifier:  []byte("00"),
 		preamble:    []byte("01020304"),
 		adapter:     adapter,
 		l3Protocols: l3Protocols,
 		rawConsumer: rawConsumer,
+	}
+
+	for _, l3P := range l3Protocols {
+		l3P.SetL2Protocol(s)
 	}
 
 	go s.run()
@@ -80,7 +84,7 @@ func (s *SimpleEthernet) SendUp([]byte) {
 /*
 Expose config
 */
-func (s *SimpleEthernet) GetAdapter() *hardware.EthernetAdapter {
+func (s *SimpleEthernet) GetAdapter() hardware.Adapter {
 	return s.adapter
 }
 
