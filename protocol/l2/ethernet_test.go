@@ -19,6 +19,10 @@ func (d *node) SetL2Protocol(l2Protocol protocol.L2Protocol) {
 	d.l2Protocol = l2Protocol
 }
 
+func (d *node) GetL2Protocol() protocol.L2Protocol {
+	return d.l2Protocol
+}
+
 func (d *node) GetIdentifier() []byte {
 	return []byte("du")
 }

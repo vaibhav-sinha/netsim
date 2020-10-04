@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"netsim/hardware"
 	"netsim/protocol/l2"
+	"netsim/utils"
 	"sync"
 )
 
@@ -74,7 +75,7 @@ func (b *Bridge) sendUp(portNum int, frame []byte) {
 		frame[20] = vlanTag[0]
 		frame[21] = vlanTag[1]
 
-		checksum := b.calculateChecksum(frame[:len(frame)-1])
+		checksum := utils.CalculateChecksum(frame[:len(frame)-1])
 		frame[len(frame)-1] = checksum[0]
 	}
 
@@ -116,15 +117,6 @@ func (b *Bridge) isPartOfVlan(portNum int, vlanId uint16) bool {
 	}
 
 	return false
-}
-
-func (b *Bridge) calculateChecksum(data []byte) []byte {
-	checksum := []byte("0")
-	for _, d := range data {
-		checksum[0] += d
-	}
-
-	return checksum
 }
 
 /*

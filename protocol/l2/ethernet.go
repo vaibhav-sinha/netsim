@@ -24,6 +24,7 @@ Checksum  - checksumLength bytes
 
 var (
 	checksumLength = 1
+	mtu            = 1500
 	broadcastAddr  = utils.HexStringToBytes("FFFFFFFFFFFF")
 	multicastAddr  = utils.HexStringToBytes("01005E")
 	defaultVlanId  = utils.HexStringToBytes("0000")
@@ -31,7 +32,6 @@ var (
 
 type Ethernet struct {
 	buffer      []byte
-	identifier  []byte
 	preamble    []byte
 	adapter     *hardware.EthernetAdapter
 	l3Protocols []protocol.L3Protocol
@@ -43,7 +43,6 @@ Constructor
 */
 func NewEthernet(adapter *hardware.EthernetAdapter, l3Protocols []protocol.L3Protocol, rawConsumer protocol.FrameConsumer) *Ethernet {
 	s := &Ethernet{
-		identifier:  []byte("00"),
 		preamble:    []byte("01020304"),
 		adapter:     adapter,
 		l3Protocols: l3Protocols,
@@ -62,7 +61,8 @@ func NewEthernet(adapter *hardware.EthernetAdapter, l3Protocols []protocol.L3Pro
 Next 3 methods make this an implementation of Protocol
 */
 func (s *Ethernet) GetIdentifier() []byte {
-	return s.identifier
+	//At L2, there are no identifiers. The protocol is fixed for a particular kind of adapter, hence there is no need of a de-multiplexing key
+	return nil
 }
 
 func (s *Ethernet) SendDown(data []byte, destAddr []byte, metadata []byte, l3Protocol protocol.Protocol) {
@@ -73,7 +73,7 @@ func (s *Ethernet) SendDown(data []byte, destAddr []byte, metadata []byte, l3Pro
 	b = append(b, defaultVlanId...)
 	b = append(b, l3Protocol.GetIdentifier()...)
 	b = append(b, data...)
-	b = append(b, s.calculateChecksum(b)...)
+	b = append(b, utils.CalculateChecksum(b)...)
 	s.adapter.PutInBuffer(b)
 }
 
@@ -82,8 +82,12 @@ func (s *Ethernet) SendUp([]byte) {
 }
 
 /*
-Expose config
+Next 2 methods make this an implementation of L2Protocol
 */
+func (s *Ethernet) GetMTU() int {
+	return mtu
+}
+
 func (s *Ethernet) GetAdapter() hardware.Adapter {
 	return s.adapter
 }
@@ -166,17 +170,8 @@ func (s *Ethernet) checkForFrame() {
 	s.buffer = nil
 }
 
-func (s *Ethernet) calculateChecksum(data []byte) []byte {
-	checksum := []byte("0")
-	for _, d := range data {
-		checksum[0] += d
-	}
-
-	return checksum
-}
-
 func (s *Ethernet) validateChecksum(data []byte) bool {
-	calculated := s.calculateChecksum(data[:len(data)-checksumLength])
+	calculated := utils.CalculateChecksum(data[:len(data)-checksumLength])
 	actual := data[len(data)-checksumLength:]
 
 	isMatch := true

@@ -27,6 +27,10 @@ func (d *node) SetL2Protocol(l2Protocol protocol.L2Protocol) {
 	d.l2Protocol = l2Protocol
 }
 
+func (d *node) GetL2Protocol() protocol.L2Protocol {
+	return d.l2Protocol
+}
+
 func (d *node) SendDown(data []byte, destAddr []byte, metadata []byte, sender protocol.Protocol) {
 	d.l2Protocol.SendDown(data, destAddr, metadata, d)
 }
