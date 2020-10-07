@@ -5,7 +5,7 @@ import (
 )
 
 type FrameConsumer interface {
-	SendUp([]byte)
+	SendUp([]byte, FrameConsumer)
 }
 
 type FrameProducer interface {
@@ -37,7 +37,8 @@ type L4Protocol interface {
 }
 
 type RouteProvider interface {
-	GetNextHopForAddress([]byte) []byte
+	GetGatewayForAddress([]byte) []byte
+	GetInterfaceForAddress([]byte) int
 }
 
 type AddressResolver interface {

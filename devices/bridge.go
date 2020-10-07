@@ -3,6 +3,7 @@ package devices
 import (
 	"encoding/binary"
 	"netsim/hardware"
+	"netsim/protocol"
 	"netsim/protocol/l2"
 	"netsim/utils"
 	"sync"
@@ -16,6 +17,7 @@ Also, not adding any buffers
 */
 type Bridge struct {
 	ports           []*l2.Ethernet
+	portMapping     map[protocol.FrameConsumer]int
 	forwardingTable map[string]int
 	vlanTable       map[int][]uint16
 	lock            sync.Mutex
@@ -23,13 +25,15 @@ type Bridge struct {
 
 func NewBridge(macs [][]byte) *Bridge {
 	bridge := &Bridge{
+		portMapping:     make(map[protocol.FrameConsumer]int),
 		forwardingTable: make(map[string]int),
 		vlanTable:       make(map[int][]uint16),
 	}
 	for i, m := range macs {
-		adapter := l2.NewEthernet(hardware.NewEthernetAdapter(m, true), nil, newBridgeFrameConsumer(bridge, i))
-		bridge.ports = append(bridge.ports, adapter)
+		ethernet := l2.NewEthernet(hardware.NewEthernetAdapter(m, true), nil, bridge)
+		bridge.ports = append(bridge.ports, ethernet)
 		bridge.vlanTable[i] = []uint16{0}
+		bridge.portMapping[ethernet] = i
 	}
 
 	return bridge
@@ -52,12 +56,14 @@ func (b *Bridge) GetPort(portNum int) *l2.Ethernet {
 /*
 Actual forwarding logic
 */
-func (b *Bridge) sendUp(portNum int, frame []byte) {
+func (b *Bridge) SendUp(frame []byte, sender protocol.FrameConsumer) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
 	sourceAddr := frame[14:20]
 	destAddr := frame[8:14]
+
+	portNum := b.portMapping[sender]
 
 	//Find the VLAN Id for the incoming frame
 	isSourceTrunk := b.isTrunk(portNum)
@@ -117,23 +123,4 @@ func (b *Bridge) isPartOfVlan(portNum int, vlanId uint16) bool {
 	}
 
 	return false
-}
-
-/*
-Internal struct to track which port sent a frame
-*/
-type bridgeFrameConsumer struct {
-	bridge  *Bridge
-	portNum int
-}
-
-func newBridgeFrameConsumer(bridge *Bridge, portNum int) *bridgeFrameConsumer {
-	return &bridgeFrameConsumer{
-		bridge:  bridge,
-		portNum: portNum,
-	}
-}
-
-func (b *bridgeFrameConsumer) SendUp(frame []byte) {
-	b.bridge.sendUp(b.portNum, frame)
 }

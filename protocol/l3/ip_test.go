@@ -32,7 +32,7 @@ func (d *node) SendDown(data []byte, destAddr []byte, metadata []byte, sender pr
 	d.l3Protocol.SendDown(data, destAddr, metadata, d)
 }
 
-func (d *node) SendUp(b []byte) {
+func (d *node) SendUp(b []byte, source protocol.FrameConsumer) {
 	log.Printf("node: Got packet %s", b)
 }
 
@@ -42,8 +42,12 @@ Static Routing Table
 type staticRouteProvider struct {
 }
 
-func (s *staticRouteProvider) GetNextHopForAddress(ipAddr []byte) []byte {
+func (s *staticRouteProvider) GetGatewayForAddress(ipAddr []byte) []byte {
 	return ipAddr
+}
+
+func (s *staticRouteProvider) GetInterfaceForAddress(ipAddr []byte) int {
+	return 0
 }
 
 /*
@@ -66,11 +70,11 @@ func TestSimpleDataTransfer(t *testing.T) {
 	node1 := &node{}
 	node2 := &node{}
 
-	ip1 := NewIP([]byte{10, 0, 0, 1}, []protocol.L4Protocol{node1}, nil, routeProvider, addressResolver)
+	ip1 := NewIP([]byte{10, 0, 0, 1}, false, []protocol.L4Protocol{node1}, nil, routeProvider, addressResolver)
 	adapter1 := hardware.NewEthernetAdapter([]byte("immac1"), false)
 	l2.NewEthernet(adapter1, []protocol.L3Protocol{ip1}, nil)
 
-	ip2 := NewIP([]byte{10, 0, 0, 2}, []protocol.L4Protocol{node2}, nil, routeProvider, addressResolver)
+	ip2 := NewIP([]byte{10, 0, 0, 2}, false, []protocol.L4Protocol{node2}, nil, routeProvider, addressResolver)
 	adapter2 := hardware.NewEthernetAdapter([]byte("immac2"), false)
 	l2.NewEthernet(adapter2, []protocol.L3Protocol{ip2}, nil)
 
@@ -88,6 +92,6 @@ func TestSimpleDataTransfer(t *testing.T) {
 	// Send large packet for fragmentation - Set Ethernet MTU to 35: 20 bytes header and 15 bytes payload
 	// Sending body greater than 15 bytes should cause fragmentation
 	node1.SendDown([]byte("this_is_a_test_and_it_should_cause_fragmentation"), []byte{10, 0, 0, 2}, []byte{0, 5}, nil)
-	time.Sleep(500 * time.Second)
+	time.Sleep(10 * time.Second)
 
 }

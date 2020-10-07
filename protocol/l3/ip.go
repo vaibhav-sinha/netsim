@@ -39,6 +39,7 @@ type IP struct {
 	ipIdentMap          map[string]uint16
 	buffer              map[uint64]*fragmentTracker
 	ipAddress           []byte
+	forwardingMode      bool
 	version             []byte
 	identifier          []byte
 	l2Protocol          protocol.L2Protocol
@@ -52,11 +53,12 @@ type IP struct {
 /*
 Constructor
 */
-func NewIP(ipAddress []byte, l4Protocols []protocol.L4Protocol, rawConsumer protocol.FrameConsumer, routingTable protocol.RouteProvider, addrResolutionTable protocol.AddressResolver) *IP {
+func NewIP(ipAddress []byte, forwardingMode bool, l4Protocols []protocol.L4Protocol, rawConsumer protocol.FrameConsumer, routingTable protocol.RouteProvider, addrResolutionTable protocol.AddressResolver) *IP {
 	ip := &IP{
 		ipIdentMap:          map[string]uint16{},
 		buffer:              map[uint64]*fragmentTracker{},
 		ipAddress:           ipAddress,
+		forwardingMode:      forwardingMode,
 		version:             utils.HexStringToBytes("04"),
 		identifier:          utils.HexStringToBytes("0800"),
 		l4Protocols:         l4Protocols,
@@ -84,7 +86,7 @@ func (ip *IP) SendDown(data []byte, destAddr []byte, metadata []byte, l4Protocol
 	tos := metadata[0]
 	ttl := metadata[1]
 	proto := l4Protocol.GetIdentifier()
-	nextHopAddr := ip.routingTable.GetNextHopForAddress(destAddr)
+	nextHopAddr := ip.routingTable.GetGatewayForAddress(destAddr)
 	l2Address := ip.addrResolutionTable.Resolve(nextHopAddr)
 
 	//Fragmentation logic follows. We use ident=0 for packets in which no fragmentation occurs
@@ -130,28 +132,39 @@ func (ip *IP) SendDown(data []byte, destAddr []byte, metadata []byte, l4Protocol
 	}
 }
 
-func (ip *IP) SendUp(packet []byte) {
+func (ip *IP) SendUp(packet []byte, source protocol.FrameConsumer) {
 	isValid := ip.isValidPacket(packet)
 	if isValid {
+		isPacketForMe := ip.isPacketForMe(packet)
+		if !ip.forwardingMode && !isPacketForMe {
+			return
+		}
+
 		ready, data := ip.reassemble(packet)
 		if ready {
 			if ip.rawConsumer != nil {
-				ip.rawConsumer.SendUp(data)
+				ip.rawConsumer.SendUp(data, ip)
 			}
 
-			proto := packet[10]
-			var upperLayerProtocol protocol.L4Protocol
-			for _, l4P := range ip.l4Protocols {
-				if l4P.GetIdentifier()[0] == proto {
-					upperLayerProtocol = l4P
-					break
+			if len(ip.l4Protocols) > 0 {
+				proto := packet[10]
+				var upperLayerProtocol protocol.L4Protocol
+				for _, l4P := range ip.l4Protocols {
+					if l4P.GetIdentifier()[0] == proto {
+						upperLayerProtocol = l4P
+						break
+					}
 				}
-			}
 
-			if upperLayerProtocol != nil {
-				upperLayerProtocol.SendUp(data)
-			} else {
-				log.Printf("IP: addr %s: Got unrecognized packet type: %v", string(ip.ipAddress), proto)
+				if !isPacketForMe {
+					return
+				}
+
+				if upperLayerProtocol != nil {
+					upperLayerProtocol.SendUp(data, ip)
+				} else {
+					log.Printf("IP: addr %s: Got unrecognized packet type: %v", string(ip.ipAddress), proto)
+				}
 			}
 		}
 	} else {
@@ -285,6 +298,18 @@ func (ip *IP) isValidPacket(packet []byte) bool {
 	actual := packet[11]
 
 	return calculated == actual
+}
+
+func (ip *IP) isPacketForMe(packet []byte) bool {
+	destinationAddr := packet[16:20]
+
+	for i := 0; i < 4; i++ {
+		if ip.ipAddress[i] != destinationAddr[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (ip *IP) cleanBuffersPeriodically() {

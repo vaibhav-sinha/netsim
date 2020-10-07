@@ -31,7 +31,7 @@ func (d *node) SendDown(data []byte, destAddr []byte, metadata []byte, sender pr
 	d.l2Protocol.SendDown(data, d.getMacForAddr(destAddr), metadata, d)
 }
 
-func (d *node) SendUp(b []byte) {
+func (d *node) SendUp(b []byte, source protocol.FrameConsumer) {
 	log.Printf("node: Got packet %s", b)
 }
 
