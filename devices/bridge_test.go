@@ -14,29 +14,47 @@ import (
 /*
 Dummy L3 Protocol implementation for testing
 */
-type node struct {
+type l3Node struct {
 	nodeNum    int
 	l2Protocol protocol.L2Protocol
 }
 
-func (d *node) GetIdentifier() []byte {
+func NewL3Node(mac []byte, nodeNum int) *l3Node {
+	node := &l3Node{
+		nodeNum: nodeNum,
+	}
+	adapter := hardware.NewEthernetAdapter(mac, false)
+	ethernet := l2.NewEthernet(adapter, []protocol.L3Protocol{node}, nil)
+	node.l2Protocol = ethernet
+	return node
+}
+
+func (d *l3Node) TurnOn() {
+	d.l2Protocol.GetAdapter().TurnOn()
+}
+
+func (d *l3Node) GetIdentifier() []byte {
 	return []byte("no")
 }
 
-func (d *node) SetL2Protocol(l2Protocol protocol.L2Protocol) {
+func (d *l3Node) GetAddress() []byte {
+	return []byte{10, 0, 0, 1}
+}
+
+func (d *l3Node) SetL2Protocol(l2Protocol protocol.L2Protocol) {
 	d.l2Protocol = l2Protocol
 }
 
-func (d *node) GetL2Protocol() protocol.L2Protocol {
+func (d *l3Node) GetL2Protocol() protocol.L2Protocol {
 	return d.l2Protocol
 }
 
-func (d *node) SendDown(data []byte, destAddr []byte, metadata []byte, sender protocol.Protocol) {
+func (d *l3Node) SendDown(data []byte, destAddr []byte, metadata []byte, sender protocol.Protocol) {
 	d.l2Protocol.SendDown(data, destAddr, metadata, d)
 }
 
-func (d *node) SendUp(b []byte, sender protocol.FrameConsumer) {
-	log.Printf("node %d: Got packet: %s", d.nodeNum, b)
+func (d *l3Node) SendUp(b []byte, metadata []byte, sender protocol.Protocol) {
+	log.Printf("l4Node %d: Got packet: %s", d.nodeNum, b)
 }
 
 /*
@@ -47,14 +65,12 @@ func TestBridge(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	// Create the nodes
-	nodes := []*node{}
+	nodes := []*l3Node{}
 	for i := 0; i < 4; i++ {
-		n := &node{nodeNum: i}
 		mac := fmt.Sprintf("portn%d", i)
-		adapter := hardware.NewEthernetAdapter([]byte(mac), false)
-		l2.NewEthernet(adapter, []protocol.L3Protocol{n}, nil)
+		n := NewL3Node([]byte(mac), i)
 		nodes = append(nodes, n)
-		adapter.TurnOn()
+		n.TurnOn()
 	}
 
 	// Create the bridge

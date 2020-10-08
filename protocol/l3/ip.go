@@ -82,6 +82,10 @@ func (ip *IP) GetIdentifier() []byte {
 	return ip.identifier
 }
 
+func (ip *IP) GetAddress() []byte {
+	return ip.ipAddress
+}
+
 func (ip *IP) SendDown(data []byte, destAddr []byte, metadata []byte, l4Protocol protocol.Protocol) {
 	tos := metadata[0]
 	ttl := metadata[1]
@@ -132,7 +136,7 @@ func (ip *IP) SendDown(data []byte, destAddr []byte, metadata []byte, l4Protocol
 	}
 }
 
-func (ip *IP) SendUp(packet []byte, source protocol.FrameConsumer) {
+func (ip *IP) SendUp(packet []byte, metadata []byte, source protocol.Protocol) {
 	isValid := ip.isValidPacket(packet)
 	if isValid {
 		isPacketForMe := ip.isPacketForMe(packet)
@@ -140,11 +144,19 @@ func (ip *IP) SendUp(packet []byte, source protocol.FrameConsumer) {
 			return
 		}
 
+		if ip.rawConsumer != nil {
+			ip.rawConsumer.SendUp(packet, nil, ip)
+		}
+
 		ready, data := ip.reassemble(packet)
 		if ready {
-			if ip.rawConsumer != nil {
-				ip.rawConsumer.SendUp(data, ip)
-			}
+			//Extract relevant info from packet
+			sourceAddr := packet[12:16]
+			destinationAddr := packet[16:20]
+
+			ipMetadata := []byte{}
+			ipMetadata = append(ipMetadata, sourceAddr...)
+			ipMetadata = append(ipMetadata, destinationAddr...)
 
 			if len(ip.l4Protocols) > 0 {
 				proto := packet[10]
@@ -161,7 +173,7 @@ func (ip *IP) SendUp(packet []byte, source protocol.FrameConsumer) {
 				}
 
 				if upperLayerProtocol != nil {
-					upperLayerProtocol.SendUp(data, ip)
+					upperLayerProtocol.SendUp(data, ipMetadata, ip)
 				} else {
 					log.Printf("IP: addr %s: Got unrecognized packet type: %v", string(ip.ipAddress), proto)
 				}

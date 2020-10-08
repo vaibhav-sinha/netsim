@@ -49,6 +49,12 @@ func (b *Bridge) TurnOn() {
 	}
 }
 
+func (b *Bridge) TurnOff() {
+	for _, a := range b.ports {
+		a.GetAdapter().TurnOff()
+	}
+}
+
 func (b *Bridge) GetPort(portNum int) *l2.Ethernet {
 	return b.ports[portNum]
 }
@@ -56,7 +62,7 @@ func (b *Bridge) GetPort(portNum int) *l2.Ethernet {
 /*
 Actual forwarding logic
 */
-func (b *Bridge) SendUp(frame []byte, sender protocol.FrameConsumer) {
+func (b *Bridge) SendUp(frame []byte, metadata []byte, sender protocol.Protocol) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 

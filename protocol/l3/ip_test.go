@@ -32,7 +32,7 @@ func (d *node) SendDown(data []byte, destAddr []byte, metadata []byte, sender pr
 	d.l3Protocol.SendDown(data, destAddr, metadata, d)
 }
 
-func (d *node) SendUp(b []byte, source protocol.FrameConsumer) {
+func (d *node) SendUp(b []byte, metadata []byte, source protocol.Protocol) {
 	log.Printf("node: Got packet %s", b)
 }
 

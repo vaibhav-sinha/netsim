@@ -77,7 +77,7 @@ func (s *Ethernet) SendDown(data []byte, destAddr []byte, metadata []byte, l3Pro
 	s.adapter.PutInBuffer(b)
 }
 
-func (s *Ethernet) SendUp([]byte, protocol.FrameConsumer) {
+func (s *Ethernet) SendUp([]byte, []byte, protocol.Protocol) {
 	//Not used since at L2 level the adapter sends the data up byte-by-byte
 }
 
@@ -141,7 +141,7 @@ func (s *Ethernet) checkForFrame() {
 		}
 
 		if s.rawConsumer != nil {
-			s.rawConsumer.SendUp(previousFrame[:], s)
+			s.rawConsumer.SendUp(previousFrame[:], nil, s)
 		}
 
 		if len(s.l3Protocols) > 0 {
@@ -157,7 +157,7 @@ func (s *Ethernet) checkForFrame() {
 			if upperLayerProtocol != nil {
 				previousFrame = previousFrame[24:]
 				previousFrame = previousFrame[:len(previousFrame)-checksumLength]
-				upperLayerProtocol.SendUp(previousFrame, s)
+				upperLayerProtocol.SendUp(previousFrame, nil, s)
 			} else {
 				log.Printf("Ethernet: mac %s: Got unrecognized frame type: %v", string(s.adapter.GetMacAddress()), frameType)
 			}

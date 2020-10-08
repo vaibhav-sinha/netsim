@@ -5,7 +5,7 @@ import (
 )
 
 type FrameConsumer interface {
-	SendUp([]byte, FrameConsumer)
+	SendUp(data []byte, metadata []byte, sender Protocol)
 }
 
 type FrameProducer interface {
@@ -26,6 +26,7 @@ type L2Protocol interface {
 
 type L3Protocol interface {
 	Protocol
+	GetAddress() []byte
 	SetL2Protocol(L2Protocol)
 	GetL2Protocol() L2Protocol
 }
@@ -43,4 +44,9 @@ type RouteProvider interface {
 
 type AddressResolver interface {
 	Resolve([]byte) []byte
+}
+
+type CIDR struct {
+	Address []byte
+	Mask    int
 }

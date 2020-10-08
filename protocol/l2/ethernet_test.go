@@ -27,11 +27,15 @@ func (d *node) GetIdentifier() []byte {
 	return []byte("du")
 }
 
+func (d *node) GetAddress() []byte {
+	return []byte{10, 0, 0, 1}
+}
+
 func (d *node) SendDown(data []byte, destAddr []byte, metadata []byte, sender protocol.Protocol) {
 	d.l2Protocol.SendDown(data, d.getMacForAddr(destAddr), metadata, d)
 }
 
-func (d *node) SendUp(b []byte, source protocol.FrameConsumer) {
+func (d *node) SendUp(b []byte, metadata []byte, source protocol.Protocol) {
 	log.Printf("node: Got packet %s", b)
 }
 
