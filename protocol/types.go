@@ -34,7 +34,6 @@ type L3Protocol interface {
 type L4Protocol interface {
 	Protocol
 	SetL3Protocol(L3Protocol)
-	GetL3Protocol() L3Protocol
 }
 
 type RouteProvider interface {

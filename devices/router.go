@@ -82,6 +82,11 @@ func (r *Router) SendUp(packet []byte, metadata []byte, sender protocol.Protocol
 	destinationAddr := newPacket[16:20]
 	intf := r.routingTable.GetInterfaceForAddress(destinationAddr)
 
+	//If incoming interface is same as outgoing interface, then drop the packet
+	if intf == r.portMapping[sender] {
+		return
+	}
+
 	//Get the next hop address
 	nextHopAddr := r.routingTable.GetGatewayForAddress(destinationAddr)
 	l2Address := r.addrResolutionTable.Resolve(nextHopAddr)
