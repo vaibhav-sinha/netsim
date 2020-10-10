@@ -22,13 +22,15 @@ type L2Protocol interface {
 	Protocol
 	GetMTU() int
 	GetAdapter() hardware.Adapter
+	AddL3Protocol(l3Protocol L3Protocol)
 }
 
 type L3Protocol interface {
 	Protocol
-	GetAddress() []byte
-	SetL2Protocol(L2Protocol)
-	GetL2Protocol() L2Protocol
+	GetAddressForInterface(int) []byte
+	SetL2ProtocolForInterface(int, L2Protocol)
+	GetL2ProtocolForInterface(int) L2Protocol
+	AddL4Protocol(protocol L4Protocol)
 }
 
 type L4Protocol interface {

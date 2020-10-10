@@ -15,19 +15,23 @@ type node struct {
 	l2Protocol protocol.L2Protocol
 }
 
-func (d *node) SetL2Protocol(l2Protocol protocol.L2Protocol) {
+func (d *node) SetL2ProtocolForInterface(intfNum int, l2Protocol protocol.L2Protocol) {
 	d.l2Protocol = l2Protocol
 }
 
-func (d *node) GetL2Protocol() protocol.L2Protocol {
+func (d *node) GetL2ProtocolForInterface(intfNum int) protocol.L2Protocol {
 	return d.l2Protocol
+}
+
+func (d *node) AddL4Protocol(protocol protocol.L4Protocol) {
+
 }
 
 func (d *node) GetIdentifier() []byte {
 	return []byte("du")
 }
 
-func (d *node) GetAddress() []byte {
+func (d *node) GetAddressForInterface(intfNum int) []byte {
 	return []byte{10, 0, 0, 1}
 }
 
@@ -51,10 +55,14 @@ func TestSimpleDataTransfer(t *testing.T) {
 	node2 := &node{}
 
 	adapter1 := hardware.NewEthernetAdapter([]byte("immac1"), false)
-	NewEthernet(adapter1, []protocol.L3Protocol{node1}, nil)
+	ethernet1 := NewEthernet(adapter1, nil)
+	ethernet1.AddL3Protocol(node1)
+	node1.SetL2ProtocolForInterface(0, ethernet1)
 
 	adapter2 := hardware.NewEthernetAdapter([]byte("immac2"), false)
-	NewEthernet(adapter2, []protocol.L3Protocol{node2}, nil)
+	ethernet2 := NewEthernet(adapter2, nil)
+	ethernet2.AddL3Protocol(node2)
+	node2.SetL2ProtocolForInterface(0, ethernet2)
 
 	_ = hardware.NewLink(100, 1e8, 0.01, adapter1, adapter2)
 

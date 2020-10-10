@@ -24,7 +24,8 @@ func NewL3Node(mac []byte, nodeNum int) *l3Node {
 		nodeNum: nodeNum,
 	}
 	adapter := hardware.NewEthernetAdapter(mac, false)
-	ethernet := l2.NewEthernet(adapter, []protocol.L3Protocol{node}, nil)
+	ethernet := l2.NewEthernet(adapter, nil)
+	ethernet.AddL3Protocol(node)
 	node.l2Protocol = ethernet
 	return node
 }
@@ -37,16 +38,20 @@ func (d *l3Node) GetIdentifier() []byte {
 	return []byte("no")
 }
 
-func (d *l3Node) GetAddress() []byte {
+func (d *l3Node) GetAddressForInterface(intfNum int) []byte {
 	return []byte{10, 0, 0, 1}
 }
 
-func (d *l3Node) SetL2Protocol(l2Protocol protocol.L2Protocol) {
+func (d *l3Node) SetL2ProtocolForInterface(intfNum int, l2Protocol protocol.L2Protocol) {
 	d.l2Protocol = l2Protocol
 }
 
-func (d *l3Node) GetL2Protocol() protocol.L2Protocol {
+func (d *l3Node) GetL2ProtocolForInterface(intfNum int) protocol.L2Protocol {
 	return d.l2Protocol
+}
+
+func (d *l3Node) AddL4Protocol(l4Protocol protocol.L4Protocol) {
+
 }
 
 func (d *l3Node) SendDown(data []byte, destAddr []byte, metadata []byte, sender protocol.Protocol) {

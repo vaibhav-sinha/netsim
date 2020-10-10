@@ -30,7 +30,7 @@ func NewBridge(macs [][]byte) *Bridge {
 		vlanTable:       make(map[int][]uint16),
 	}
 	for i, m := range macs {
-		ethernet := l2.NewEthernet(hardware.NewEthernetAdapter(m, true), nil, bridge)
+		ethernet := l2.NewEthernet(hardware.NewEthernetAdapter(m, true), bridge)
 		bridge.ports = append(bridge.ports, ethernet)
 		bridge.vlanTable[i] = []uint16{0}
 		bridge.portMapping[ethernet] = i

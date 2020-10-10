@@ -41,16 +41,11 @@ type Ethernet struct {
 /*
 Constructor
 */
-func NewEthernet(adapter *hardware.EthernetAdapter, l3Protocols []protocol.L3Protocol, rawConsumer protocol.FrameConsumer) *Ethernet {
+func NewEthernet(adapter *hardware.EthernetAdapter, rawConsumer protocol.FrameConsumer) *Ethernet {
 	s := &Ethernet{
 		preamble:    []byte("01020304"),
 		adapter:     adapter,
-		l3Protocols: l3Protocols,
 		rawConsumer: rawConsumer,
-	}
-
-	for _, l3P := range l3Protocols {
-		l3P.SetL2Protocol(s)
 	}
 
 	go s.run()
@@ -90,6 +85,10 @@ func (s *Ethernet) GetMTU() int {
 
 func (s *Ethernet) GetAdapter() hardware.Adapter {
 	return s.adapter
+}
+
+func (s *Ethernet) AddL3Protocol(l3Protocol protocol.L3Protocol) {
+	s.l3Protocols = append(s.l3Protocols, l3Protocol)
 }
 
 /*

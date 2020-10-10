@@ -16,6 +16,23 @@ type node struct {
 	l3Protocol protocol.L3Protocol
 }
 
+func newNode(mac []byte, ipAddr []byte, routeProvider protocol.RouteProvider, addressResolver protocol.AddressResolver) *node {
+	//Create the stack
+	n := &node{}
+	adapter1 := hardware.NewEthernetAdapter(mac, false)
+	ethernet1 := l2.NewEthernet(adapter1, nil)
+	ip := NewIP([][]byte{ipAddr}, false, nil, routeProvider, addressResolver)
+
+	//Set references
+	ip.SetL2ProtocolForInterface(0, ethernet1)
+	n.SetL3Protocol(ip)
+
+	//Arrange the stack
+	ethernet1.AddL3Protocol(ip)
+	ip.AddL4Protocol(n)
+	return n
+}
+
 func (d *node) SetL3Protocol(l3Protocol protocol.L3Protocol) {
 	d.l3Protocol = l3Protocol
 }
@@ -67,22 +84,14 @@ func TestSimpleDataTransfer(t *testing.T) {
 	routeProvider := &staticRouteProvider{}
 	addressResolver := &staticAddressResolver{}
 
-	node1 := &node{}
-	node2 := &node{}
+	node1 := newNode([]byte("immac1"), []byte{10, 0, 0, 1}, routeProvider, addressResolver)
+	node2 := newNode([]byte("immac2"), []byte{10, 0, 0, 2}, routeProvider, addressResolver)
 
-	ip1 := NewIP([]byte{10, 0, 0, 1}, false, []protocol.L4Protocol{node1}, nil, routeProvider, addressResolver)
-	adapter1 := hardware.NewEthernetAdapter([]byte("immac1"), false)
-	l2.NewEthernet(adapter1, []protocol.L3Protocol{ip1}, nil)
-
-	ip2 := NewIP([]byte{10, 0, 0, 2}, false, []protocol.L4Protocol{node2}, nil, routeProvider, addressResolver)
-	adapter2 := hardware.NewEthernetAdapter([]byte("immac2"), false)
-	l2.NewEthernet(adapter2, []protocol.L3Protocol{ip2}, nil)
-
-	_ = hardware.NewLink(100, 1e8, 0.00, adapter1, adapter2)
+	_ = hardware.NewLink(100, 1e8, 0.00, node1.l3Protocol.GetL2ProtocolForInterface(0).GetAdapter(), node2.l3Protocol.GetL2ProtocolForInterface(0).GetAdapter())
 
 	go hardware.Clk.Start()
-	adapter1.TurnOn()
-	adapter2.TurnOn()
+	node1.l3Protocol.GetL2ProtocolForInterface(0).GetAdapter().TurnOn()
+	node2.l3Protocol.GetL2ProtocolForInterface(0).GetAdapter().TurnOn()
 
 	// Send the packet and wait
 	log.Printf("Testcase: Sending packet")
@@ -93,5 +102,4 @@ func TestSimpleDataTransfer(t *testing.T) {
 	// Sending body greater than 15 bytes should cause fragmentation
 	node1.SendDown([]byte("this_is_a_test_and_it_should_cause_fragmentation"), []byte{10, 0, 0, 2}, []byte{0, 5}, nil)
 	time.Sleep(10 * time.Second)
-
 }

@@ -19,15 +19,25 @@ type l4Node struct {
 }
 
 func newL4Node(mac []byte, ipAddr []byte, routeProvider protocol.RouteProvider, addressResolver protocol.AddressResolver) *l4Node {
+	//Create the stack
 	node := &l4Node{}
-	ip1 := l3.NewIP(ipAddr, false, []protocol.L4Protocol{node}, nil, routeProvider, addressResolver)
-	adapter1 := hardware.NewEthernetAdapter(mac, false)
-	l2.NewEthernet(adapter1, []protocol.L3Protocol{ip1}, nil)
+	adapter := hardware.NewEthernetAdapter(mac, false)
+	ethernet := l2.NewEthernet(adapter, nil)
+	ip := l3.NewIP([][]byte{ipAddr}, false, nil, routeProvider, addressResolver)
+
+	//Set references
+	ip.SetL2ProtocolForInterface(0, ethernet)
+	node.SetL3Protocol(ip)
+
+	//Arrange the stack
+	ethernet.AddL3Protocol(ip)
+	ip.AddL4Protocol(node)
+
 	return node
 }
 
 func (d *l4Node) TurnOn() {
-	d.l3Protocol.GetL2Protocol().GetAdapter().TurnOn()
+	d.l3Protocol.GetL2ProtocolForInterface(0).GetAdapter().TurnOn()
 }
 
 func (d *l4Node) SetL3Protocol(l3Protocol protocol.L3Protocol) {
@@ -47,7 +57,7 @@ func (d *l4Node) SendDown(data []byte, destAddr []byte, metadata []byte, sender 
 }
 
 func (d *l4Node) SendUp(b []byte, metadata []byte, source protocol.Protocol) {
-	log.Printf("l4Node: ip %v: Got packet %s", d.l3Protocol.GetAddress(), b)
+	log.Printf("l4Node: ip %v: Got packet %s", d.l3Protocol.GetAddressForInterface(0), b)
 }
 
 /*
@@ -93,8 +103,8 @@ func TestSimpleDataTransfer(t *testing.T) {
 	router := NewRouter(macs, ipAddrs, routeProvider, addressResolver)
 
 	//Link the hardware
-	_ = hardware.NewDuplexLink(100, 1e8, 0.00, node1.GetL3Protocol().GetL2Protocol().GetAdapter(), router.GetPort(0).GetL2Protocol().GetAdapter())
-	_ = hardware.NewDuplexLink(100, 1e8, 0.00, node2.GetL3Protocol().GetL2Protocol().GetAdapter(), router.GetPort(1).GetL2Protocol().GetAdapter())
+	_ = hardware.NewDuplexLink(100, 1e8, 0.00, node1.GetL3Protocol().GetL2ProtocolForInterface(0).GetAdapter(), router.GetL3Protocol().GetL2ProtocolForInterface(0).GetAdapter())
+	_ = hardware.NewDuplexLink(100, 1e8, 0.00, node2.GetL3Protocol().GetL2ProtocolForInterface(0).GetAdapter(), router.GetL3Protocol().GetL2ProtocolForInterface(1).GetAdapter())
 
 	//Start everything
 	go hardware.Clk.Start()
