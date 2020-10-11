@@ -27,7 +27,7 @@ func newL4Node(mac []byte, ipAddr []byte, routeProvider protocol.RouteProvider, 
 
 	//Set references
 	ip.SetL2ProtocolForInterface(0, ethernet)
-	node.SetL3Protocol(ip)
+	node.AddL3Protocol(ip)
 
 	//Arrange the stack
 	ethernet.AddL3Protocol(ip)
@@ -40,7 +40,7 @@ func (d *l4Node) TurnOn() {
 	d.l3Protocol.GetL2ProtocolForInterface(0).GetAdapter().TurnOn()
 }
 
-func (d *l4Node) SetL3Protocol(l3Protocol protocol.L3Protocol) {
+func (d *l4Node) AddL3Protocol(l3Protocol protocol.L3Protocol) {
 	d.l3Protocol = l3Protocol
 }
 

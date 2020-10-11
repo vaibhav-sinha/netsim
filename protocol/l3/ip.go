@@ -296,7 +296,7 @@ func (i *ipInterface) sendDown(data []byte, destAddr []byte, metadata []byte, l4
 
 		//Create fragments and send
 		for totalBytesConsumed := 0; totalBytesConsumed < len(data); totalBytesConsumed += i.l2Protocol.GetMTU() - 20 {
-			//Flag indicated if this is the last fragment
+			//Flag indicates if this is the last fragment
 			flag := 0
 			if totalBytesConsumed+i.l2Protocol.GetMTU()-20 >= len(data) {
 				flag = 1

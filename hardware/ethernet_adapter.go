@@ -60,7 +60,12 @@ func (e *EthernetAdapter) SetByte(b *byte) {
 		return
 	}
 
-	e.readBuffer <- b
+	select {
+	case e.readBuffer <- b:
+		return
+	default:
+		return
+	}
 }
 
 func (e *EthernetAdapter) PutInBuffer(bytes []byte) {

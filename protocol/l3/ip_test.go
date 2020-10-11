@@ -19,21 +19,21 @@ type node struct {
 func newNode(mac []byte, ipAddr []byte, routeProvider protocol.RouteProvider, addressResolver protocol.AddressResolver) *node {
 	//Create the stack
 	n := &node{}
-	adapter1 := hardware.NewEthernetAdapter(mac, false)
-	ethernet1 := l2.NewEthernet(adapter1, nil)
+	adapter := hardware.NewEthernetAdapter(mac, false)
+	ethernet := l2.NewEthernet(adapter, nil)
 	ip := NewIP([][]byte{ipAddr}, false, nil, routeProvider, addressResolver)
 
 	//Set references
-	ip.SetL2ProtocolForInterface(0, ethernet1)
-	n.SetL3Protocol(ip)
+	ip.SetL2ProtocolForInterface(0, ethernet)
+	n.AddL3Protocol(ip)
 
 	//Arrange the stack
-	ethernet1.AddL3Protocol(ip)
+	ethernet.AddL3Protocol(ip)
 	ip.AddL4Protocol(n)
 	return n
 }
 
-func (d *node) SetL3Protocol(l3Protocol protocol.L3Protocol) {
+func (d *node) AddL3Protocol(l3Protocol protocol.L3Protocol) {
 	d.l3Protocol = l3Protocol
 }
 

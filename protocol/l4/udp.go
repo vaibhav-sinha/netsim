@@ -1,8 +1,11 @@
 package l4
 
 import (
+	"encoding/binary"
+	"log"
 	"netsim/protocol"
-	"netsim/protocol/l3"
+	"netsim/utils"
+	"sync"
 )
 
 /*
@@ -20,10 +23,25 @@ Length		- 2 byte
 Checksum	- 1 byte
 Data		- No fixed length
 */
+
+const (
+	defaultUDPBufferSize = 4096
+	defaultTOS           = 0
+	defaultTTL           = 10
+)
+
 type UDP struct {
 	identifier   []byte
-	intfs        []*l3.IP
-	portBindings map[int64]*binding
+	l3Protocols  []protocol.L3Protocol
+	portBindings map[uint16]*Binding
+	lock         sync.Mutex
+}
+
+func NewUDP() *UDP {
+	return &UDP{
+		identifier:   utils.HexStringToBytes("11"),
+		portBindings: map[uint16]*Binding{},
+	}
 }
 
 /*
@@ -34,20 +52,160 @@ func (u *UDP) GetIdentifier() []byte {
 }
 
 func (u *UDP) SendUp(data []byte, metadata []byte, sender protocol.Protocol) {
-	//Not used since UDP works on pull model rather than push
+	if !u.isValid(data) {
+		log.Printf("UDP: Got corrupted packet")
+		return
+	}
+
+	//Extract relevant information
+	destPort := binary.BigEndian.Uint16(data[2:4])
+	destAddr := metadata[4:8]
+
+	b, found := u.portBindings[destPort]
+	if !found {
+		log.Printf("UDP: Got packet for port no one is listening on. Dropping.")
+		return
+	}
+
+	if b.isMatch(destAddr, destPort) {
+		b.putInBuffer(data[7:])
+	} else {
+		log.Printf("UDP: Got packet for different address. Dropping.")
+	}
 }
 
 func (u *UDP) SendDown(data []byte, destAddr []byte, metadata []byte, sender protocol.Protocol) {
+	//Extract relevant information
+	destPort := metadata[0:2]
+	srcPort := metadata[2:4]
 
+	//Calculate packet length
+	length := make([]byte, 2)
+	binary.BigEndian.PutUint16(length, uint16(7+len(data)))
+
+	//Find which network protocol to use
+	networkProtocolIdentifier := metadata[4:6]
+	var l3Protocol protocol.L3Protocol
+	for _, l3P := range u.l3Protocols {
+		l3PIdentifier := l3P.GetIdentifier()
+		if networkProtocolIdentifier[0] == l3PIdentifier[0] && networkProtocolIdentifier[1] == l3PIdentifier[1] {
+			l3Protocol = l3P
+			break
+		}
+	}
+
+	if l3Protocol == nil {
+		log.Printf("Error: Could not find matching network protocol")
+		return
+	}
+
+	//Create the packet
+	var packet []byte
+	packet = append(packet, srcPort...)
+	packet = append(packet, destPort...)
+	packet = append(packet, length...)
+	packet = append(packet, byte(0))
+	packet = append(packet, data...)
+
+	//Fill in the checksum
+	packet[6] = utils.CalculateChecksum(packet)[0]
+
+	//Send the packet
+	l3Protocol.SendDown(packet, destAddr, []byte{defaultTOS, defaultTTL}, u)
 }
 
-func (u *UDP) SetL3Protocol(l3Protocol protocol.L3Protocol) {
+/*
+Following methods make this an implementation of L4 Protocol
+*/
+func (u *UDP) AddL3Protocol(l3Protocol protocol.L3Protocol) {
+	u.l3Protocols = append(u.l3Protocols, l3Protocol)
+}
+
+/*
+UDP public API
+*/
+func (u *UDP) Bind(ipAddr []byte, port uint16) *Binding {
+	if u.IsPortInUse(port) {
+		log.Printf("Error: Port already in use")
+		return nil
+	}
+
+	u.lock.Lock()
+	defer u.lock.Unlock()
+
+	b := newBinding(u, ipAddr, port)
+	u.portBindings[port] = b
+
+	return b
+}
+
+func (u *UDP) IsPortInUse(port uint16) bool {
+	u.lock.Lock()
+	defer u.lock.Unlock()
+
+	_, found := u.portBindings[port]
+	return found
+}
+
+/*
+Internal methods
+*/
+func (u *UDP) isValid(packet []byte) bool {
+	actual := packet[6]
+	calculated := utils.CalculateChecksum(packet)[0] - actual
+	return actual == calculated
 }
 
 /*
 Internal struct to track bindings
 */
-type binding struct {
-	ip   []byte
-	port int16
+type Binding struct {
+	udp    *UDP
+	ip     []byte
+	port   uint16
+	buffer *utils.Buffer
+}
+
+func newBinding(udp *UDP, ipAddr []byte, port uint16) *Binding {
+	return &Binding{
+		udp:    udp,
+		ip:     ipAddr,
+		port:   port,
+		buffer: utils.NewBuffer(defaultUDPBufferSize),
+	}
+}
+
+func (b *Binding) Close() {
+	b.udp.lock.Lock()
+	defer b.udp.lock.Unlock()
+
+	delete(b.udp.portBindings, b.port)
+}
+
+func (b *Binding) Recv() []byte {
+	return b.buffer.Get()
+}
+
+func (b *Binding) putInBuffer(item []byte) {
+	b.buffer.Put(item)
+}
+
+func (b *Binding) isMatch(destIp []byte, port uint16) bool {
+	if port != b.port {
+		return false
+	}
+
+	if binary.BigEndian.Uint32(b.ip) == 0 {
+		return true
+	}
+
+	match := true
+	for i := 0; i < 4; i++ {
+		if destIp[i] != b.ip[i] {
+			match = false
+			break
+		}
+	}
+
+	return match
 }

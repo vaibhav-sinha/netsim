@@ -8,7 +8,7 @@ func HexStringToBytes(s string) []byte {
 }
 
 func CalculateChecksum(data []byte) []byte {
-	checksum := []byte("0")
+	checksum := []byte{0}
 	for _, d := range data {
 		checksum[0] += d
 	}
