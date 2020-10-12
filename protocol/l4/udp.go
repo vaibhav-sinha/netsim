@@ -39,7 +39,7 @@ type UDP struct {
 
 func NewUDP() *UDP {
 	return &UDP{
-		identifier:   utils.HexStringToBytes("11"),
+		identifier:   protocol.UDP,
 		portBindings: map[uint16]*Binding{},
 	}
 }

@@ -54,7 +54,7 @@ func NewIP(ipAddresses [][]byte, forwardingMode bool, rawConsumer protocol.Frame
 	ip := &IP{
 		forwardingMode:      forwardingMode,
 		version:             utils.HexStringToBytes("04"),
-		identifier:          utils.HexStringToBytes("0800"),
+		identifier:          protocol.IP,
 		rawConsumer:         rawConsumer,
 		routingTable:        routingTable,
 		addrResolutionTable: addrResolutionTable,

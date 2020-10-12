@@ -22,5 +22,10 @@ func (c *Buffer) Put(item []byte) {
 }
 
 func (c *Buffer) Get() []byte {
-	return <-c.items
+	select {
+	case data := <-c.items:
+		return data
+	default:
+		return nil
+	}
 }
