@@ -7,7 +7,6 @@ import (
 	"netsim/protocol"
 	"netsim/protocol/l2"
 	"netsim/protocol/l3"
-	"netsim/utils"
 	"testing"
 	"time"
 )
@@ -15,13 +14,13 @@ import (
 type node struct {
 	adapter         *hardware.EthernetAdapter
 	udp             *UDP
-	binding         *Binding
+	binding         *UdpBinding
 	routeProvider   protocol.RouteProvider
 	addressResolver protocol.AddressResolver
 }
 
 func newNode(mac []byte, ipAddr []byte) *node {
-	//Create misc node components
+	//Create misc tcpNode components
 	routeProvider := &staticRouteProvider{}
 	addressResolver := &staticAddressResolver{}
 
@@ -57,7 +56,7 @@ func (n *node) send(data []byte, ipAddr []byte, port uint16) {
 	binary.BigEndian.PutUint16(metadata, port)
 	binary.BigEndian.PutUint16(metadata[2:4], 100)
 
-	metadata = append(metadata, utils.HexStringToBytes("0800")...)
+	metadata = append(metadata, protocol.IP...)
 	n.udp.SendDown(data, ipAddr, metadata, nil)
 }
 
@@ -102,7 +101,7 @@ func TestSimpleDataTransfer(t *testing.T) {
 	node1.turnOn()
 	node2.turnOn()
 
-	//Bind node 2 to port 80
+	//Bind tcpNode 2 to port 80
 	node2.bind([]byte{0, 0, 0, 0}, 80)
 
 	// Send the packet and wait

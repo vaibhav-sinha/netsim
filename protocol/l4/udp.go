@@ -23,24 +23,17 @@ Length		- 2 byte
 Checksum	- 1 byte
 Data		- No fixed length
 */
-
-const (
-	defaultUDPBufferSize = 4096
-	defaultTOS           = 0
-	defaultTTL           = 10
-)
-
 type UDP struct {
 	identifier   []byte
 	l3Protocols  []protocol.L3Protocol
-	portBindings map[uint16]*Binding
+	portBindings map[uint16]*UdpBinding
 	lock         sync.Mutex
 }
 
 func NewUDP() *UDP {
 	return &UDP{
 		identifier:   protocol.UDP,
-		portBindings: map[uint16]*Binding{},
+		portBindings: map[uint16]*UdpBinding{},
 	}
 }
 
@@ -124,7 +117,7 @@ func (u *UDP) AddL3Protocol(l3Protocol protocol.L3Protocol) {
 /*
 UDP public API
 */
-func (u *UDP) Bind(ipAddr []byte, port uint16) *Binding {
+func (u *UDP) Bind(ipAddr []byte, port uint16) *UdpBinding {
 	if u.IsPortInUse(port) {
 		log.Printf("Error: Port already in use")
 		return nil
@@ -133,7 +126,7 @@ func (u *UDP) Bind(ipAddr []byte, port uint16) *Binding {
 	u.lock.Lock()
 	defer u.lock.Unlock()
 
-	b := newBinding(u, ipAddr, port)
+	b := newUdpBinding(u, ipAddr, port)
 	u.portBindings[port] = b
 
 	return b
@@ -157,40 +150,40 @@ func (u *UDP) isValid(packet []byte) bool {
 }
 
 /*
-Internal struct to track bindings
+Struct to track bindings
 */
-type Binding struct {
+type UdpBinding struct {
 	udp    *UDP
 	ip     []byte
 	port   uint16
 	buffer *utils.Buffer
 }
 
-func newBinding(udp *UDP, ipAddr []byte, port uint16) *Binding {
-	return &Binding{
+func newUdpBinding(udp *UDP, ipAddr []byte, port uint16) *UdpBinding {
+	return &UdpBinding{
 		udp:    udp,
 		ip:     ipAddr,
 		port:   port,
-		buffer: utils.NewBuffer(defaultUDPBufferSize),
+		buffer: utils.NewBuffer(defaultBufferSize),
 	}
 }
 
-func (b *Binding) Close() {
+func (b *UdpBinding) Close() {
 	b.udp.lock.Lock()
 	defer b.udp.lock.Unlock()
 
 	delete(b.udp.portBindings, b.port)
 }
 
-func (b *Binding) Recv() []byte {
-	return b.buffer.Get()
+func (b *UdpBinding) Recv() []byte {
+	return b.buffer.Get(false)
 }
 
-func (b *Binding) putInBuffer(item []byte) {
+func (b *UdpBinding) putInBuffer(item []byte) {
 	b.buffer.Put(item)
 }
 
-func (b *Binding) isMatch(destIp []byte, port uint16) bool {
+func (b *UdpBinding) isMatch(destIp []byte, port uint16) bool {
 	if port != b.port {
 		return false
 	}

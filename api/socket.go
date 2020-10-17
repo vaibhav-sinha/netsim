@@ -31,7 +31,7 @@ type Socket struct {
 	host        Host
 	sockType    int
 	networkType int
-	binding     *l4.Binding
+	binding     *l4.UdpBinding
 	data        []byte
 }
 

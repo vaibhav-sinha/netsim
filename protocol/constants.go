@@ -10,4 +10,5 @@ var DefaultRouteCidr = &CIDR{
 var (
 	IP  = utils.HexStringToBytes("0800")
 	UDP = utils.HexStringToBytes("11")
+	TCP = utils.HexStringToBytes("06")
 )
