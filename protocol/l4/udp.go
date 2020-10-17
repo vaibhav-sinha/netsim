@@ -117,7 +117,7 @@ func (u *UDP) AddL3Protocol(l3Protocol protocol.L3Protocol) {
 /*
 UDP public API
 */
-func (u *UDP) Bind(ipAddr []byte, port uint16) *UdpBinding {
+func (u *UDP) Bind(ipAddr []byte, port uint16, networkProtocolIdentifier []byte) *UdpBinding {
 	if u.IsPortInUse(port) {
 		log.Printf("Error: Port already in use")
 		return nil
@@ -126,7 +126,7 @@ func (u *UDP) Bind(ipAddr []byte, port uint16) *UdpBinding {
 	u.lock.Lock()
 	defer u.lock.Unlock()
 
-	b := newUdpBinding(u, ipAddr, port)
+	b := newUdpBinding(u, ipAddr, port, networkProtocolIdentifier)
 	u.portBindings[port] = b
 
 	return b
@@ -153,18 +153,20 @@ func (u *UDP) isValid(packet []byte) bool {
 Struct to track bindings
 */
 type UdpBinding struct {
-	udp    *UDP
-	ip     []byte
-	port   uint16
-	buffer *utils.Buffer
+	udp                       *UDP
+	ip                        []byte
+	port                      uint16
+	networkProtocolIdentifier []byte
+	buffer                    *utils.Buffer
 }
 
-func newUdpBinding(udp *UDP, ipAddr []byte, port uint16) *UdpBinding {
+func newUdpBinding(udp *UDP, ipAddr []byte, port uint16, networkProtocolIdentifier []byte) *UdpBinding {
 	return &UdpBinding{
-		udp:    udp,
-		ip:     ipAddr,
-		port:   port,
-		buffer: utils.NewBuffer(defaultBufferSize),
+		udp:                       udp,
+		ip:                        ipAddr,
+		port:                      port,
+		networkProtocolIdentifier: networkProtocolIdentifier,
+		buffer:                    utils.NewBuffer(defaultBufferSize),
 	}
 }
 

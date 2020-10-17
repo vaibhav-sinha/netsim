@@ -48,7 +48,7 @@ func (n *node) turnOn() {
 }
 
 func (n *node) bind(ipAddr []byte, port uint16) {
-	n.binding = n.udp.Bind(ipAddr, port)
+	n.binding = n.udp.Bind(ipAddr, port, protocol.IP)
 }
 
 func (n *node) send(data []byte, ipAddr []byte, port uint16) {
