@@ -19,10 +19,21 @@ type node struct {
 	addressResolver protocol.AddressResolver
 }
 
-func newNode(mac []byte, ipAddr []byte) *node {
+func newNode(id int, mac []byte, ipAddr []byte) *node {
 	//Create misc tcpNode components
-	routeProvider := &staticRouteProvider{}
-	addressResolver := &staticAddressResolver{}
+	routeProvider := l3.NewStaticRouteProvider()
+	if id == 0 {
+		routeProvider.Add(protocol.DefaultRouteCidr, []byte{10, 0, 0, 2}, 0)
+	} else {
+		routeProvider.Add(protocol.DefaultRouteCidr, []byte{10, 0, 0, 1}, 0)
+	}
+
+	addressResolver := l3.NewStaticAddressResolver()
+	if id == 0 {
+		addressResolver.Add([]byte{10, 0, 0, 2}, []byte("immac2"))
+	} else {
+		addressResolver.Add([]byte{10, 0, 0, 1}, []byte("immac1"))
+	}
 
 	//Create the stack
 	n := &node{routeProvider: routeProvider, addressResolver: addressResolver}
@@ -65,35 +76,11 @@ func (n *node) recv() {
 }
 
 /*
-Static Routing Table
-*/
-type staticRouteProvider struct {
-}
-
-func (s *staticRouteProvider) GetGatewayForAddress(ipAddr []byte) []byte {
-	return ipAddr
-}
-
-func (s *staticRouteProvider) GetInterfaceForAddress(ipAddr []byte) int {
-	return 0
-}
-
-/*
-Static Address Resolution
-*/
-type staticAddressResolver struct {
-}
-
-func (s *staticAddressResolver) Resolve(ipAddr []byte) []byte {
-	return []byte("immac2")
-}
-
-/*
 Testcase
 */
 func TestSimpleDataTransfer(t *testing.T) {
-	node1 := newNode([]byte("immac1"), []byte{10, 0, 0, 1})
-	node2 := newNode([]byte("immac2"), []byte{10, 0, 0, 2})
+	node1 := newNode(0, []byte("immac1"), []byte{10, 0, 0, 1})
+	node2 := newNode(1, []byte("immac2"), []byte{10, 0, 0, 2})
 
 	_ = hardware.NewDuplexLink(100, 1e8, 0.00, node1.adapter, node2.adapter)
 

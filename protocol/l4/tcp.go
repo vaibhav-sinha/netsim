@@ -383,12 +383,22 @@ func (t *TcpConnection) sendPeriodically() {
 
 			if len(data) > 0 {
 				t.sendDown(data, byte(0))
+				//go t.triggerRedeliveryOnTimer(data, t.sendSeqNum, time.NewTimer(2000 * time.Millisecond))
 				t.sendSeqNum += 1
 				t.dataState = 1
 			}
 		}
 
 		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+func (t *TcpConnection) triggerRedeliveryOnTimer(data []byte, seqNum uint32, timer *time.Timer) {
+	<-timer.C
+	if t.dataState == 1 && seqNum == t.sendSeqNum-1 {
+		t.sendSeqNum -= 1
+		t.sendDown(data, byte(0))
+		t.sendSeqNum += 1
 	}
 }
 
