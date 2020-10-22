@@ -1,0 +1,62 @@
+{
+  "name": "Demo Schema",
+  "networks": [
+    {
+      "name": "Home Network",
+      "cidr": "10.0.0.0/24",
+      "devices": [
+        {
+          "name": "Laptop 1",
+          "type": "Computer",
+          "mac": "lapt01",
+          "ip": "10.0.0.10",
+          "addr_resolution": {
+            "10.0.0.11": "mobi01",
+            "10.0.0.12": "mobi02",
+            "10.0.0.13": "smtv01"
+          },
+          "routing_table": {
+            "default": "10.0.0.1"
+          }
+        },
+        {
+          "name": "Mobile 1",
+          "type": "Computer",
+          "mac": "mobi01",
+          "ip": "10.0.0.11"
+        },
+        {
+          "name": "Mobile 2",
+          "type": "Computer",
+          "mac": "mobi02",
+          "ip": "10.0.0.12"
+        },
+        {
+          "name": "Smart TV 1",
+          "type": "Computer",
+          "mac": "smtv01",
+          "ip": "10.0.0.13"
+        },
+        {
+          "name": "Airtel Router",
+          "type": "Router",
+          "ports": [
+            {
+              "name": "p0",
+              "mac": "r_0_p0",
+              "ip": "10.0.0.1"
+            },
+            {
+              "name": "p1",
+              "mac": "r_0_p1",
+              "ip": "10.0.0.2"
+            }
+          ]
+        }
+      ],
+      "connections": [
+
+      ]
+    }
+  ]
+}
