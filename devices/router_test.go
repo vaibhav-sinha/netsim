@@ -49,7 +49,7 @@ func (d *l4Node) GetL3Protocol() protocol.L3Protocol {
 }
 
 func (d *l4Node) GetIdentifier() []byte {
-	return []byte("d")
+	return []byte{6}
 }
 
 func (d *l4Node) SendDown(data []byte, destAddr []byte, metadata []byte, sender protocol.Protocol) {
